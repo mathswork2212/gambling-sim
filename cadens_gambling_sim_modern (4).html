@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadens Arcade — Modern Casino Sim</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Three.js for 3D Avatar Rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap');
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at top left, #12131C, #08090D);
+      color: #E2E8F0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .glass-card {
+      background: rgba(22, 27, 46, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+    .glass-card-hover {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card-hover:hover {
+      transform: translateY(-3px);
+      border-color: rgba(236, 72, 153, 0.4);
+      box-shadow: 0 12px 30px rgba(236, 72, 153, 0.15);
+    }
+    .neon-text-pink {
+      text-shadow: 0 0 10px rgba(236, 72, 153, 0.6), 0 0 20px rgba(236, 72, 153, 0.3);
+    }
+    .neon-text-cyan {
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.6), 0 0 20px rgba(6, 182, 212, 0.3);
+    }
+    .neon-text-gold {
+      text-shadow: 0 0 10px rgba(234, 179, 8, 0.6), 0 0 20px rgba(234, 179, 8, 0.3);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0c10;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #222638;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ec4899;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100 pb-12">
+
+  <header class="w-full glass-card sticky top-0 z-40 border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-700 via-red-600 to-red-900 flex items-center justify-center text-white shadow-lg shadow-red-600/30 border border-red-400/40">
+          <i class="fa-solid fa-slot-machine text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-wider bg-gradient-to-r from-red-400 via-red-300 to-orange-300 bg-clip-text text-transparent">
+            CADENS GAMBLING SIM
+          </h1>
+          <p class="text-xs text-slate-400 font-medium">Modern Arcade Edition</p>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="flex items-center gap-3 bg-slate-900/80 p-1.5 px-4 rounded-2xl border border-slate-800">
+        <div class="flex items-center gap-2 border-r border-slate-800 pr-4">
+          <i class="fa-solid fa-wallet text-emerald-400 text-lg"></i>
+          <div>
+            <div class="text-[10px] uppercase text-slate-400 tracking-wider font-bold">Balance</div>
+            <div id="cash-balance" class="text-base font-extrabold text-emerald-400">£500</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pl-1">
+          <i class="fa-solid fa-chart-line text-yellow-400 text-lg"></i>
+          <div>
+            <div class="text-[10px] uppercase text-slate-400 tracking-wider font-bold">Net Worth</div>
+            <div id="net-worth" class="text-base font-extrabold text-yellow-400">£500</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="openRedeemModal()" class="px-3.5 py-2 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-600 hover:to-red-700 rounded-xl text-xs font-bold transition shadow-lg shadow-red-700/20 flex items-center gap-2">
+          <i class="fa-solid fa-ticket"></i> Redeem Code
+        </button>
+
+        <button id="dev-menu-btn" onclick="openDevModal()" class="hidden px-3.5 py-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 rounded-xl text-xs font-bold transition shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400/30">
+          <i class="fa-solid fa-code"></i> DEV MENU
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto w-full px-4 mt-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Navigation Tabs & Content Panels (8 cols) -->
+    <div class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Navigation Tabs -->
+      <div class="flex items-center gap-2 p-1.5 glass-card rounded-2xl overflow-x-auto">
+        <button onclick="switchTab('games')" id="tab-btn-games" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-800 text-white shadow-md">
+          <i class="fa-solid fa-gamepad"></i> Casino Floor
+        </button>
+        <button onclick="switchTab('shop')" id="tab-btn-shop" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
+          <i class="fa-solid fa-store"></i> Catalog Shop
+        </button>
+        <button onclick="switchTab('clothes-shop')" id="tab-btn-clothes-shop" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
+          <i class="fa-solid fa-shirt"></i> Clothing Store
+        </button>
+        <button onclick="switchTab('closet')" id="tab-btn-closet" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
+          <i class="fa-solid fa-box-archive"></i> Inventory
+        </button>
+      </div>
+
+      <div id="tab-games" class="tab-content space-y-6">
+        
+        <!-- Modern Game Selector -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-3">
+          <button onclick="selectGame('coinflip')" id="game-btn-coinflip" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-red-600/80 bg-red-600/10 flex flex-col items-center justify-center gap-2 hover:border-red-600 transition"><i class="fa-solid fa-coins text-2xl text-red-400"></i><span class="text-xs font-bold">Coinflip</span></button>
+          <button onclick="selectGame('slots')" id="game-btn-slots" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-red-600 transition"><i class="fa-solid fa-cubes text-2xl text-red-400"></i><span class="text-xs font-bold">Slots</span></button>
+          <button onclick="selectGame('roulette')" id="game-btn-roulette" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-emerald-500 transition"><i class="fa-solid fa-circle-dot text-2xl text-emerald-400"></i><span class="text-xs font-bold">Roulette</span></button>
+          <button onclick="selectGame('blackjack')" id="game-btn-blackjack" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-amber-500 transition"><i class="fa-solid fa-spade text-2xl text-amber-400"></i><span class="text-xs font-bold">Blackjack</span></button>
+          <button onclick="selectGame('mines')" id="game-btn-mines" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-red-600 transition"><i class="fa-solid fa-bomb text-2xl text-red-400"></i><span class="text-xs font-bold">Mines</span></button>
+          <button onclick="selectGame('dice')" id="game-btn-dice" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-sky-500 transition"><i class="fa-solid fa-dice text-2xl text-sky-400"></i><span class="text-xs font-bold">Dice Duel</span></button>
+          <button onclick="selectGame('crash')" id="game-btn-crash" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-rose-500 transition"><i class="fa-solid fa-rocket text-2xl text-rose-400"></i><span class="text-xs font-bold">Crash</span></button>
+          <button onclick="selectGame('hilo')" id="game-btn-hilo" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-red-700 transition"><i class="fa-solid fa-arrow-up-wide-short text-2xl text-indigo-400"></i><span class="text-xs font-bold">Hi-Lo</span></button>
+          <button onclick="selectGame('plinko')" id="game-btn-plinko" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-fuchsia-500 transition"><i class="fa-solid fa-braille text-2xl text-fuchsia-400"></i><span class="text-xs font-bold">Plinko</span></button>
+          <button onclick="selectGame('baccarat')" id="game-btn-baccarat" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-yellow-500 transition"><i class="fa-solid fa-gem text-2xl text-yellow-400"></i><span class="text-xs font-bold">Baccarat</span></button>
+          <button onclick="selectGame('wheel')" id="game-btn-wheel" class="game-select-btn p-3 glass-card rounded-2xl border-2 border-transparent flex flex-col items-center justify-center gap-2 hover:border-orange-500 transition"><i class="fa-solid fa-dharmachakra text-2xl text-orange-400"></i><span class="text-xs font-bold">Prize Wheel</span></button>
+        </div>
+
+        <!-- Universal Bet Bar -->
+        <div class="glass-card p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Bet Amount:</span>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">£</span>
+              <input type="number" id="bet-amount" value="50" min="1" class="w-32 bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-1.5 text-sm font-bold text-emerald-400 focus:outline-none focus:border-red-600">
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="adjustBet('half')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700">½</button>
+            <button onclick="adjustBet('double')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700">2×</button>
+            <button onclick="adjustBet('max')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-red-400">MAX</button>
+          </div>
+        </div>
+
+        <!-- Game Stage Container -->
+        <div id="game-stage" class="glass-card p-6 rounded-3xl min-h-[380px] flex items-center justify-center relative overflow-hidden">
+          
+          <!-- COINFLIP PANEL -->
+          <div id="game-panel-coinflip" class="w-full flex flex-col items-center justify-center gap-6">
+            <h2 class="text-xl font-bold text-red-400 tracking-wide">50/50 COINFLIP</h2>
+            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Fair odds • Heads 50% • Tails 50%</div>
+            
+            <div class="relative w-36 h-36 flex items-center justify-center">
+              <div id="coin" class="w-32 h-32 rounded-full bg-gradient-to-tr from-yellow-500 via-amber-300 to-yellow-600 border-4 border-yellow-200 flex items-center justify-center text-3xl font-black text-slate-950 shadow-2xl transition-transform duration-700">
+                <span id="coin-face">HEADS</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4 w-full max-w-sm">
+              <button onclick="playCoinflip('heads')" class="flex-1 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-400 hover:to-rose-500 font-bold rounded-xl shadow-lg shadow-red-600/20 text-xs tracking-wider">
+                BET HEADS
+              </button>
+              <button onclick="playCoinflip('tails')" class="flex-1 py-3 bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-400 hover:to-blue-500 font-bold rounded-xl shadow-lg shadow-red-600/20 text-xs tracking-wider">
+                BET TAILS
+              </button>
+            </div>
+          </div>
+
+          <!-- SLOTS PANEL -->
+          <div id="game-panel-slots" class="hidden w-full flex flex-col items-center justify-center gap-6">
+            <h2 class="text-xl font-bold text-red-400 tracking-wide">CLASSIC 3-REEL SLOTS</h2>
+
+            <div class="flex items-center gap-4 bg-slate-900/90 p-6 rounded-2xl border border-red-600/30 shadow-2xl">
+              <div id="slot-1" class="w-20 h-24 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-4xl font-extrabold text-amber-400 shadow-inner">💎</div>
+              <div id="slot-2" class="w-20 h-24 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-4xl font-extrabold text-amber-400 shadow-inner">7️⃣</div>
+              <div id="slot-3" class="w-20 h-24 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-4xl font-extrabold text-amber-400 shadow-inner">🎰</div>
+            </div>
+
+            <button onclick="spinSlots()" class="px-8 py-3.5 bg-gradient-to-r from-red-600 to-red-800 hover:from-red-400 hover:to-red-700 text-white font-extrabold tracking-widest rounded-2xl shadow-xl shadow-red-600/20 text-xs">
+              SPIN REELS
+            </button>
+          </div>
+
+          <!-- ROULETTE PANEL -->
+          <div id="game-panel-roulette" class="hidden w-full flex flex-col items-center justify-center gap-6">
+            <h2 class="text-xl font-bold text-emerald-400 tracking-wide">NEON ROULETTE</h2>
+
+            <div class="relative w-36 h-36 rounded-full border-4 border-slate-700 bg-slate-900 flex items-center justify-center shadow-2xl">
+              <div id="roulette-wheel" class="w-full h-full rounded-full border-4 border-emerald-500/40 flex items-center justify-center text-2xl font-black text-emerald-400">
+                0
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 w-full max-w-md">
+              <button onclick="playRoulette('red')" class="py-3 bg-red-600 hover:bg-red-500 font-bold rounded-xl border border-red-400/40 text-xs">
+                RED (2x)
+              </button>
+              <button onclick="playRoulette('green')" class="py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl border border-emerald-400/40 text-xs">
+                GREEN 0 (14x)
+              </button>
+              <button onclick="playRoulette('black')" class="py-3 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl border border-slate-600 text-xs">
+                BLACK (2x)
+              </button>
+            </div>
+          </div>
+
+          <!-- BLACKJACK PANEL -->
+          <div id="game-panel-blackjack" class="hidden w-full flex flex-col items-center justify-center gap-6">
+            <h2 class="text-xl font-bold text-amber-400 tracking-wide">BLACKJACK 21 • MODERN TABLE</h2>
+
+            <div class="w-full text-center">
+              <div class="text-xs text-slate-400 font-bold mb-1">DEALER (<span id="dealer-score">0</span>)</div>
+              <div id="dealer-cards" class="flex justify-center gap-2 min-h-[70px]"></div>
+            </div>
+
+            <div class="w-full text-center">
+              <div class="text-xs text-slate-400 font-bold mb-1">YOUR HAND (<span id="player-score">0</span>)</div>
+              <div id="player-cards" class="flex justify-center gap-2 min-h-[70px]"></div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button id="bj-deal-btn" onclick="startBlackjack()" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider">Deal Hand</button>
+              <button id="bj-hit-btn" onclick="blackjackHit()" disabled class="px-5 py-2.5 bg-slate-800 disabled:opacity-40 hover:bg-slate-700 font-bold rounded-xl text-xs border border-slate-700">Hit</button>
+              <button id="bj-stand-btn" onclick="blackjackStand()" disabled class="px-5 py-2.5 bg-slate-800 disabled:opacity-40 hover:bg-slate-700 font-bold rounded-xl text-xs border border-slate-700">Stand</button>
+            </div>
+          </div>
+
+          <!-- MINES PANEL -->
+          <div id="game-panel-mines" class="hidden w-full flex flex-col items-center justify-center gap-4">
+            <div class="flex items-center justify-between w-full max-w-xs">
+              <div class="text-xs font-bold text-red-400">MULTIPLIER: <span id="mines-mult" class="text-white">1.00x</span></div>
+              <div class="text-xs font-bold text-emerald-400">CASHOUT: <span id="mines-cashout-val">£0</span></div>
+            </div>
+
+            <div id="mines-grid" class="grid grid-cols-5 gap-2 w-64 h-64 p-2 bg-slate-950 border border-red-600/30 rounded-2xl"></div>
+
+            <div class="flex items-center gap-3">
+              <button id="mines-start-btn" onclick="startMines()" class="px-6 py-2 bg-red-700 hover:bg-red-600 font-extrabold rounded-xl text-xs">START GAME</button>
+              <button id="mines-claim-btn" onclick="cashoutMines()" disabled class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 font-extrabold rounded-xl text-xs">CASHOUT</button>
+            </div>
+          </div>
+
+          <!-- DICE DUEL PANEL -->
+          <div id="game-panel-dice" class="hidden w-full flex flex-col items-center justify-center gap-5">
+            <h2 class="text-xl font-bold text-sky-400 tracking-wide">DICE DUEL</h2>
+            <div class="flex items-center gap-6"><div class="text-center"><div class="text-[10px] text-slate-400 font-bold mb-2">YOU</div><div id="dice-player" class="w-24 h-24 rounded-2xl bg-slate-950 border border-sky-500/30 flex items-center justify-center text-5xl">🎲</div></div><div class="text-2xl font-black text-slate-500">VS</div><div class="text-center"><div class="text-[10px] text-slate-400 font-bold mb-2">HOUSE</div><div id="dice-house" class="w-24 h-24 rounded-2xl bg-slate-950 border border-sky-500/30 flex items-center justify-center text-5xl">🎲</div></div></div>
+            <p id="dice-result" class="text-xs text-slate-400 font-bold">Higher roll wins • ties refund</p><button onclick="playDice()" class="px-8 py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 font-extrabold rounded-2xl text-xs tracking-widest">ROLL DICE</button>
+          </div>
+
+          <!-- CRASH PANEL -->
+          <div id="game-panel-crash" class="hidden w-full flex flex-col items-center justify-center gap-5"><h2 class="text-xl font-bold text-rose-400 tracking-wide">NEON CRASH</h2><div class="w-full max-w-md bg-slate-950 border border-rose-500/20 rounded-3xl p-8 text-center"><div id="crash-mult" class="text-6xl font-black text-rose-400">1.00x</div><div id="crash-status" class="mt-2 text-xs text-slate-400 font-bold">Start a round and cash out before the crash.</div></div><div class="flex gap-3"><button id="crash-start-btn" onclick="startCrash()" class="px-6 py-3 bg-rose-600 hover:bg-rose-500 font-extrabold rounded-xl text-xs">START ROUND</button><button id="crash-cashout-btn" onclick="cashoutCrash()" disabled class="px-6 py-3 bg-emerald-600 disabled:opacity-40 font-extrabold rounded-xl text-xs">CASH OUT</button></div></div>
+
+          <!-- HI-LO PANEL -->
+          <div id="game-panel-hilo" class="hidden w-full flex flex-col items-center justify-center gap-5"><h2 class="text-xl font-bold text-indigo-400 tracking-wide">HI-LO</h2><div id="hilo-card" class="w-28 h-36 rounded-2xl bg-slate-950 border border-red-700/40 flex items-center justify-center text-5xl font-black">7</div><div class="text-xs text-slate-400">Current multiplier: <span id="hilo-mult" class="text-indigo-300 font-black">1.00x</span></div><div class="flex gap-3"><button onclick="playHiLo('higher')" class="px-7 py-3 bg-red-800 hover:bg-red-700 font-extrabold rounded-xl text-xs">HIGHER</button><button onclick="playHiLo('lower')" class="px-7 py-3 bg-slate-700 hover:bg-slate-600 font-extrabold rounded-xl text-xs">LOWER</button></div><button onclick="startHiLo()" class="px-5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold">NEW HAND</button></div>
+
+          <!-- PLINKO PANEL -->
+          <div id="game-panel-plinko" class="hidden w-full flex flex-col items-center justify-center gap-5"><h2 class="text-xl font-bold text-fuchsia-400 tracking-wide">PLINKO DROP</h2><div id="plinko-board" class="relative w-72 h-56 bg-slate-950 border border-fuchsia-500/20 rounded-3xl overflow-hidden"><div class="absolute inset-x-5 top-4 grid grid-cols-7 gap-4 text-fuchsia-300 text-xs text-center leading-7 opacity-70">• • • • • • •<br> • • • • • • •<br>• • • • • • •<br> • • • • • • •<br>• • • • • • •</div><div class="absolute bottom-2 inset-x-3 grid grid-cols-7 gap-1 text-[10px] font-black text-center"><span>0.5x</span><span>1x</span><span>2x</span><span>5x</span><span>2x</span><span>1x</span><span>0.5x</span></div><div id="plinko-chip" class="hidden absolute top-2 left-1/2 -translate-x-1/2 text-2xl">🔵</div></div><p id="plinko-result" class="text-xs text-slate-400 font-bold">Drop a chip and let physics choose the slot.</p><button onclick="playPlinko()" class="px-8 py-3.5 bg-gradient-to-r from-fuchsia-500 to-red-700 font-extrabold rounded-2xl text-xs tracking-widest">DROP CHIP</button></div>
+
+          <!-- BACCARAT PANEL -->
+          <div id="game-panel-baccarat" class="hidden w-full flex flex-col items-center justify-center gap-5"><h2 class="text-xl font-bold text-yellow-400 tracking-wide">QUICK BACCARAT</h2><div class="grid grid-cols-2 gap-4 w-full max-w-md"><div class="bg-slate-950 rounded-2xl p-4 text-center border border-blue-500/20"><div class="text-[10px] text-blue-300 font-bold">PLAYER</div><div id="baccarat-player" class="text-3xl font-black mt-2">—</div></div><div class="bg-slate-950 rounded-2xl p-4 text-center border border-red-500/20"><div class="text-[10px] text-red-300 font-bold">BANKER</div><div id="baccarat-banker" class="text-3xl font-black mt-2">—</div></div></div><div class="flex gap-3 w-full max-w-md"><button onclick="playBaccarat('player')" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl text-xs">PLAYER</button><button onclick="playBaccarat('tie')" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-xs">TIE</button><button onclick="playBaccarat('banker')" class="flex-1 py-3 bg-red-600 hover:bg-red-500 font-bold rounded-xl text-xs">BANKER</button></div></div>
+
+          <!-- PRIZE WHEEL PANEL -->
+          <div id="game-panel-wheel" class="hidden w-full flex flex-col items-center justify-center gap-5"><h2 class="text-xl font-bold text-orange-400 tracking-wide">PRIZE WHEEL</h2><div id="prize-wheel" class="w-40 h-40 rounded-full border-8 border-orange-400/60 bg-gradient-to-tr from-orange-500/30 via-fuchsia-500/30 to-red-600/30 flex items-center justify-center text-3xl font-black shadow-2xl">?</div><p id="wheel-result" class="text-xs text-slate-400 font-bold">Land on a multiplier and win your wager back.</p><button onclick="spinPrizeWheel()" class="px-8 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-extrabold rounded-2xl text-xs tracking-widest">SPIN WHEEL</button></div>
+
+        </div>
+
+      </div>
+
+      <div id="tab-shop" class="tab-content hidden space-y-4">
+        <h2 class="text-lg font-bold text-slate-200">Arcade Item Catalog</h2>
+        <div id="shop-items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div id="tab-clothes-shop" class="tab-content hidden space-y-4">
+        <h2 class="text-lg font-bold text-slate-200">Modern Apparel & Outfits</h2>
+        <div id="clothes-items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div id="tab-closet" class="tab-content hidden space-y-4">
+        <h2 class="text-lg font-bold text-slate-200">Your Collection & Inventory</h2>
+        <div id="closet-items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <div class="lg:col-span-4 flex flex-col gap-4">
+      <div class="glass-card p-4 rounded-3xl sticky top-20 flex flex-col items-center">
+        
+        <div class="flex items-center justify-between w-full mb-3">
+          <h3 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-user-astronaut text-red-400"></i> 3D Avatar Inspector
+          </h3>
+          <span id="equipped-hat-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-600/20 text-red-300 border border-red-600/30">
+            Default Avatar
+          </span>
+        </div>
+
+        <!-- Canvas Container for Three.js Rendering -->
+        <div class="relative w-full aspect-square bg-slate-950/80 rounded-2xl border border-slate-800 overflow-hidden flex items-center justify-center">
+          <div id="avatar-canvas-container" class="w-full h-full"></div>
+          
+          <div class="absolute bottom-2 left-2 text-[10px] text-slate-500 bg-slate-900/80 px-2 py-0.5 rounded-md backdrop-blur">
+            Drag to Rotate
+          </div>
+        </div>
+
+        <!-- Customizer Palette -->
+        <div class="w-full mt-4 space-y-3">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Custom Colors</div>
+          
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-400 block mb-1">Skin Tone</label>
+              <input type="color" id="skin-color-picker" value="#ffe0bd" onchange="updateBodyColors()" class="w-full h-8 rounded-lg cursor-pointer bg-slate-800 border-0 p-0.5">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400 block mb-1">Torso Color</label>
+              <input type="color" id="shirt-color-picker" value="#ec4899" onchange="updateBodyColors()" class="w-full h-8 rounded-lg cursor-pointer bg-slate-800 border-0 p-0.5">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400 block mb-1">Legs Color</label>
+              <input type="color" id="pants-color-picker" value="#1e293b" onchange="updateBodyColors()" class="w-full h-8 rounded-lg cursor-pointer bg-slate-800 border-0 p-0.5">
+            </div>
+          </div>
+        </div>
+
+        <!-- Emergency Cash Top-up -->
+        <div class="w-full mt-6 pt-4 border-t border-slate-800">
+          <button id="claim-funds-btn" onclick="claimEmergencyFunds()" class="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-hand-holding-dollar"></i> Claim Emergency £500
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: REDEEM CODE -->
+  <div id="modal-redeem" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-md p-6 rounded-3xl border border-red-600/30 relative">
+      <button onclick="closeRedeemModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-red-700/30 border border-red-600/50 flex items-center justify-center text-red-400">
+          <i class="fa-solid fa-ticket text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold">Redeem Promo Code</h3>
+          <p class="text-xs text-slate-400">Unlock cash, clothes, or developer access</p>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <input type="text" id="redeem-input" placeholder="ENTER CODE (e.g. FREE)" class="w-full uppercase bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-center tracking-widest text-red-400 focus:outline-none focus:border-red-600">
+        
+        <button onclick="submitRedeemCode()" class="w-full py-3 bg-gradient-to-r from-red-700 to-pink-600 hover:from-red-600 hover:to-red-600 font-extrabold rounded-xl shadow-lg shadow-red-600/20 text-xs tracking-wider">
+          REDEEM CODE
+        </button>
+
+        <p id="redeem-msg" class="text-xs text-center font-bold hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DEVELOPER MENU (D3V) -->
+  <div id="modal-dev" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-md p-6 rounded-3xl border border-amber-500/50 relative shadow-2xl shadow-amber-500/10">
+      <button onclick="closeDevModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400">
+          <i class="fa-solid fa-code text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-amber-400">Developer Control Panel</h3>
+          <p class="text-xs text-slate-400">Set balance & rig house odds</p>
+        </div>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <label class="text-xs font-bold text-slate-300 block mb-1">Set Custom Cash Balance</label>
+          <div class="flex gap-2">
+            <input type="number" id="dev-cash-input" placeholder="e.g. 1000000" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 font-bold text-emerald-400">
+            <button onclick="setDevCash()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-xs">Set</button>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2 border-t border-slate-800">
+          <div class="text-xs font-bold text-amber-400 uppercase tracking-wider">Rigging Options</div>
+
+          <label class="flex items-center justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+            <span class="text-xs font-bold">Force Slots Jackpot (💎 💎 💎)</span>
+            <input type="checkbox" id="dev-rig-slots" onchange="toggleDevOption('slots')" class="w-4 h-4 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+            <span class="text-xs font-bold">Force Roulette Green (0)</span>
+            <input type="checkbox" id="dev-rig-roulette" onchange="toggleDevOption('roulette')" class="w-4 h-4 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+            <span class="text-xs font-bold">Force Blackjack Win (21 Deal)</span>
+            <input type="checkbox" id="dev-rig-blackjack" onchange="toggleDevOption('blackjack')" class="w-4 h-4 accent-amber-500">
+          </label>
+
+          <label class="flex items-center justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+            <span class="text-xs font-bold">Reveal Mines Locations</span>
+            <input type="checkbox" id="dev-rig-mines" onchange="toggleDevOption('mines')" class="w-4 h-4 accent-amber-500">
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global State
+    const state = {
+      cash: 500,
+      ownedItems: [],
+      ownedClothes: [],
+      equippedHat: null,
+      equippedShirt: null,
+      equippedPants: null,
+      devUnlocked: false,
+      devRig: {
+        slots: false,
+        roulette: false,
+        blackjack: false,
+        mines: false
+      },
+      redeemedCodes: []
+    };
+
+    // Item Catalog Definition (Domino Crown IS EXCLUDED from Shop -> Exclusive to FREE code)
+    const catalog = [
+      { id: 'dominus_empyreus', name: 'Dominus Empyreus', price: 25000, icon: '🥷', desc: 'The legendary holy hood.' },
+      { id: 'dominus_infernus', name: 'Dominus Infernus', price: 20000, icon: '🔥', desc: 'Fiery dark hood of terror.' },
+      { id: 'dominus_frigidus', name: 'Dominus Frigidus', price: 20000, icon: '❄️', desc: 'Frostbitten cyan hood.' },
+      { id: 'shaggy_hair', name: 'Classic Shaggy', price: 1500, icon: '💇', desc: 'Classic brown messy hairstyle.' },
+      { id: 'pumpkin_head', name: 'Pumpkin Head', price: 3000, icon: '🎃', desc: 'Spooky jack-o-lantern head.' },
+      { id: 'sparkle_fedora', name: 'Sparkle Time Fedora', price: 3500, icon: '🎩', desc: 'Glowing pink cyber fedora.' },
+      { id: 'classic_fedora', name: 'Classic Fedora', price: 1000, icon: '🎩', desc: 'Sleek dark fedora.' },
+      { id: 'valkyrie_helm', name: 'Valkyrie Helm', price: 8000, icon: '🪖', desc: 'Golden winged warrior helm.' },
+      { id: 'cyber_visor', name: 'Cyber Visor', price: 1200, icon: '🥽', desc: 'Futuristic glowing visor.' },
+      { id: 'demon_wings', name: 'Demon Wings', price: 4500, icon: '🦇', desc: 'Dark fiery wings.' },
+      { id: 'angel_wings', name: 'Angel Wings', price: 4500, icon: '🪽', desc: 'Pure white wings.' },
+      { id: 'gold_chain', name: 'Gold Chain', price: 1800, icon: '📿', desc: 'Luxury golden chain.' }
+    ];
+
+    // Clothing Catalog
+    const clothingCatalog = [
+      { id: 'shirt_tuxedo', type: 'shirt', name: 'Classic Tuxedo', price: 300, icon: '👔', color: '#0f172a' },
+      { id: 'shirt_cyan_hoodie', type: 'shirt', name: 'Cyan Neon Hoodie', price: 400, icon: '🧥', color: '#06b6d4' },
+      { id: 'shirt_gold_suit', type: 'shirt', name: 'Gold Suit Jacket', price: 800, icon: '🥼', color: '#eab308' },
+      { id: 'shirt_red_flannel', type: 'shirt', name: 'Red Plaid Shirt', price: 250, icon: '👕', color: '#dc2626' },
+      { id: 'pants_black_jeans', type: 'pants', name: 'Dark Denim Jeans', price: 200, icon: '👖', color: '#0f172a' },
+      { id: 'pants_white_slacks', type: 'pants', name: 'White Slacks', price: 350, icon: '👖', color: '#f8fafc' },
+      { id: 'pants_camo', type: 'pants', name: 'Military Camo Pants', price: 300, icon: '👖', color: '#3f6212' },
+      { id: 'pants_gold_trim', type: 'pants', name: 'VIP Gold Trim Pants', price: 600, icon: '👖', color: '#854d0e' }
+    ];
+
+    // Exclusive Items Info
+    const freeExclusiveDomino = {
+      id: 'domino_crown',
+      name: 'Domino Crown',
+      price: 10000,
+      icon: '👑',
+      desc: 'Exclusive promo code item made of domino tiles.'
+    };
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSFX(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'click') {
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === 'win') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.1);
+        osc.frequency.setValueAtTime(783.99, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } else if (type === 'lose') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'coin') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.exponentialRampToValueAtTime(1318.51, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('cash-balance').innerText = '£' + state.cash.toLocaleString();
+      
+      let catalogValue = state.ownedItems.reduce((acc, itemId) => {
+        if (itemId === 'domino_crown') return acc + freeExclusiveDomino.price;
+        const item = catalog.find(i => i.id === itemId);
+        return acc + (item ? item.price : 0);
+      }, 0);
+
+      let clothesValue = state.ownedClothes.reduce((acc, itemId) => {
+        const item = clothingCatalog.find(i => i.id === itemId);
+        return acc + (item ? item.price : 0);
+      }, 0);
+
+      document.getElementById('net-worth').innerText = '£' + (state.cash + catalogValue + clothesValue).toLocaleString();
+
+      renderShop();
+      renderClothesShop();
+      renderCloset();
+    }
+
+    function switchTab(tabId) {
+      playSFX('click');
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'text-white', 'shadow-md');
+        btn.classList.add('text-slate-400');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'text-white', 'shadow-md');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      if (window.avatarRenderer) {
+        onWindowResize();
+      }
+    }
+
+    function adjustBet(action) {
+      playSFX('click');
+      const betInput = document.getElementById('bet-amount');
+      let val = parseInt(betInput.value) || 0;
+      if (action === 'half') val = Math.max(1, Math.floor(val / 2));
+      if (action === 'double') val = Math.min(state.cash, val * 2);
+      if (action === 'max') val = Math.max(1, state.cash);
+      betInput.value = val;
+    }
+
+    function getBetAmount() {
+      const betInput = document.getElementById('bet-amount');
+      let val = parseInt(betInput.value) || 0;
+      if (val <= 0) val = 1;
+      if (val > state.cash) {
+        val = state.cash;
+        betInput.value = val;
+      }
+      return val;
+    }
+
+    function triggerConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      }
+    }
+
+    let scene, camera, renderer, characterGroup, headMesh, hatMeshGroup, torsoMesh, legsMesh, pumpkinMesh, originalHeadGeo;
+
+    function init3DAvatar() {
+      const container = document.getElementById('avatar-canvas-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.set(0, 2.8, 6.5);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(5, 10, 7);
+      scene.add(dirLight);
+
+      characterGroup = new THREE.Group();
+      scene.add(characterGroup);
+
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd, roughness: 0.5 });
+      const shirtMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.4 });
+      const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+
+      // Head
+      originalHeadGeo = new THREE.BoxGeometry(1.1, 1.1, 1.1);
+      headMesh = new THREE.Mesh(originalHeadGeo, skinMat);
+      headMesh.position.y = 2.4;
+      characterGroup.add(headMesh);
+
+      hatMeshGroup = new THREE.Group();
+      headMesh.add(hatMeshGroup);
+
+      // Torso
+      const torsoGeo = new THREE.BoxGeometry(1.4, 1.5, 0.8);
+      torsoMesh = new THREE.Mesh(torsoGeo, shirtMat);
+      torsoMesh.position.y = 1.1;
+      characterGroup.add(torsoMesh);
+
+      // Arms
+      const armGeo = new THREE.BoxGeometry(0.45, 1.4, 0.45);
+      const leftArm = new THREE.Mesh(armGeo, skinMat);
+      leftArm.position.set(-1.0, 1.15, 0);
+      const rightArm = new THREE.Mesh(armGeo, skinMat);
+      rightArm.position.set(1.0, 1.15, 0);
+      characterGroup.add(leftArm);
+      characterGroup.add(rightArm);
+
+      // Legs
+      const legGeo = new THREE.BoxGeometry(0.6, 1.3, 0.6);
+      const leftLeg = new THREE.Mesh(legGeo, pantsMat);
+      leftLeg.position.set(-0.38, -0.25, 0);
+      const rightLeg = new THREE.Mesh(legGeo, pantsMat);
+      rightLeg.position.set(0.38, -0.25, 0);
+      characterGroup.add(leftLeg);
+      characterGroup.add(rightLeg);
+
+      // Controls
+      let isDragging = false;
+      let previousMouseX = 0;
+
+      container.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        previousMouseX = e.clientX;
+      });
+
+      window.addEventListener('mouseup', () => isDragging = false);
+
+      container.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - previousMouseX;
+        characterGroup.rotation.y += deltaX * 0.015;
+        previousMouseX = e.clientX;
+      });
+
+      window.addEventListener('resize', onWindowResize);
+      animate3D();
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('avatar-canvas-container');
+      if (!container || !renderer || !camera) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+      if (characterGroup) {
+        characterGroup.rotation.y += 0.003;
+      }
+      renderer.render(scene, camera);
+    }
+
+    function updateBodyColors() {
+      const skinColor = document.getElementById('skin-color-picker').value;
+      const shirtColor = document.getElementById('shirt-color-picker').value;
+      const pantsColor = document.getElementById('pants-color-picker').value;
+
+      if (!state.equippedShirt) torsoMesh.material.color.set(shirtColor);
+      
+      headMesh.material.color.set(skinColor);
+
+      characterGroup.children.forEach(child => {
+        if (child.geometry && child.geometry.type === 'BoxGeometry') {
+          if (child.position.y < 0 && !state.equippedPants) {
+            child.material.color.set(pantsColor);
+          } else if (child.position.y > 0.5 && child.position.y < 2.0 && child.position.x !== 0) {
+            child.material.color.set(skinColor);
+          }
+        }
+      });
+    }
+
+    function equip3DAccessory(itemId) {
+      while (hatMeshGroup.children.length > 0) hatMeshGroup.remove(hatMeshGroup.children[0]);
+      headMesh.visible = true;
+      state.equippedHat = itemId || null;
+
+      const tag = document.getElementById('equipped-hat-tag');
+      if (!itemId) { tag.innerText = 'Default Avatar'; return; }
+      let itemData = catalog.find(i => i.id === itemId);
+      if (itemId === 'domino_crown') itemData = freeExclusiveDomino;
+      tag.innerText = itemData ? itemData.name : 'Equipped';
+
+      const metal = (c, rough=.25) => new THREE.MeshStandardMaterial({color:c, metalness:.75, roughness:rough});
+      const soft = (c, rough=.45) => new THREE.MeshStandardMaterial({color:c, metalness:.05, roughness:rough});
+      const basic = c => new THREE.MeshBasicMaterial({color:c});
+
+      // hatMeshGroup is a CHILD OF THE HEAD. These coordinates are therefore head-local:
+      // head spans roughly -0.55..+0.55 in Y, so hats sit above +0.55 instead of inside it.
+      if (itemId === 'domino_crown') {
+        const g = new THREE.Group();
+        const gold = metal(0xd4af37, .2), dark = metal(0x24180b, .3), ivory = soft(0xf1d39a);
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(.62,.72,.12,12), gold); base.position.y=.62; g.add(base);
+        for(let i=0;i<4;i++){
+          const tile=new THREE.Mesh(new THREE.BoxGeometry(.28,.62,.08), ivory);
+          tile.position.set(Math.cos(i*Math.PI/2)*.65,.86,Math.sin(i*Math.PI/2)*.65); tile.rotation.y=i*Math.PI/2; g.add(tile);
+          const stripe=new THREE.Mesh(new THREE.BoxGeometry(.22,.025,.09),dark); stripe.position.copy(tile.position); stripe.position.y+=.01; stripe.rotation.y=tile.rotation.y; g.add(stripe);
+        }
+        hatMeshGroup.add(g);
+
+      } else if (itemId.startsWith('dominus_')) {
+        // Classic Dominus silhouette: compact hood, black face opening, side medallions and long layered fins.
+        const g=new THREE.Group();
+        const cfg={
+          dominus_empyreus:{hood:0xd9dde5, edge:0x30343d, side:0xbcc2ca, glow:0xffffff},
+          dominus_infernus:{hood:0x65121a, edge:0x21070a, side:0xc62c24, glow:0xff5a36},
+          dominus_frigidus:{hood:0x8eeaff, edge:0x164b68, side:0x35b9df, glow:0xd8fbff}
+        }[itemId];
+        const hood=metal(cfg.hood,.3), edge=metal(cfg.edge,.2), side=metal(cfg.side,.2), glow=metal(cfg.glow,.15), black=soft(0x05070a,.9);
+        // hood cap sits over the top of the head, not through it
+        const cap=new THREE.Mesh(new THREE.SphereGeometry(.72,32,20),hood); cap.scale.set(1.02,.72,.92); cap.position.y=.55; g.add(cap);
+        // front opening / face void, pushed forward enough to avoid z-fighting
+        const opening=new THREE.Mesh(new THREE.SphereGeometry(.49,28,18),black); opening.scale.set(.82,1.15,.16); opening.position.set(0,.46,.66); g.add(opening);
+        const rim=new THREE.Mesh(new THREE.TorusGeometry(.50,.055,10,32),edge); rim.scale.set(.82,1.15,1); rim.position.set(0,.46,.70); g.add(rim);
+        // brow and lower hood lip
+        const brow=new THREE.Mesh(new THREE.BoxGeometry(.78,.10,.12),edge); brow.position.set(0,.82,.66); g.add(brow);
+        const lip=new THREE.Mesh(new THREE.BoxGeometry(.68,.08,.12),edge); lip.position.set(0,.16,.68); g.add(lip);
+        [-1,1].forEach(sideSign=>{
+          const x=sideSign*.68;
+          const ring=new THREE.Mesh(new THREE.TorusGeometry(.22,.065,12,32),edge); ring.rotation.y=Math.PI/2; ring.position.set(x,.48,.08); g.add(ring);
+          const disc=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.09,24),side); disc.rotation.z=Math.PI/2; disc.position.set(x,.48,.08); g.add(disc);
+          const jewel=new THREE.Mesh(new THREE.SphereGeometry(.055,12,8),glow); jewel.position.set(x+sideSign*.055,.48,.16); g.add(jewel);
+          // broad, feather-like swept plates behind each medallion
+          for(let i=0;i<5;i++){
+            const fin=new THREE.Mesh(new THREE.ConeGeometry(.13-i*.014,.62-i*.055,4),hood);
+            fin.scale.z=.42; fin.position.set(x+sideSign*(.02+i*.035),.43-i*.025,-.20-i*.10); fin.rotation.z=sideSign*(.18+i*.055); fin.rotation.x=Math.PI/2; g.add(fin);
+          }
+        });
+        hatMeshGroup.add(g);
+
+      } else if (itemId === 'shaggy_hair') {
+        const g=new THREE.Group(), hair=soft(0x5b3821,.75);
+        const crown=new THREE.Mesh(new THREE.SphereGeometry(.66,20,12),hair); crown.scale.set(1.05,.7,1); crown.position.y=.52; g.add(crown);
+        for(let i=0;i<9;i++){
+          const lock=new THREE.Mesh(new THREE.SphereGeometry(.20,12,8),hair);
+          const a=(i/9)*Math.PI*2; lock.scale.set(1,.95,.8); lock.position.set(Math.cos(a)*.53,.30+((i%3)*.04),Math.sin(a)*.48); g.add(lock);
+        }
+        hatMeshGroup.add(g);
+
+      } else if (itemId === 'pumpkin_head') {
+        headMesh.visible=false;
+        const g=new THREE.Group(), orange=soft(0xe86b13,.5), stem=soft(0x355e20,.7), yellow=basic(0xffd83d);
+        const body=new THREE.Mesh(new THREE.SphereGeometry(.68,20,14),orange); body.scale.set(1.05,1,.95); body.position.y=.02; g.add(body);
+        for(let a=0;a<8;a++){const ridge=new THREE.Mesh(new THREE.TorusGeometry(.66,.035,8,24),orange); ridge.rotation.y=a*Math.PI/8; ridge.position.y=.02; g.add(ridge)}
+        const st=new THREE.Mesh(new THREE.CylinderGeometry(.07,.11,.28,10),stem); st.position.y=.72; st.rotation.z=.15; g.add(st);
+        [-.23,.23].forEach(x=>{const eye=new THREE.Mesh(new THREE.ConeGeometry(.11,.20,3),yellow); eye.rotation.x=-Math.PI/2; eye.position.set(x,.10,.65); g.add(eye)});
+        hatMeshGroup.add(g);
+
+      } else if (itemId === 'sparkle_fedora' || itemId === 'classic_fedora') {
+        const g=new THREE.Group();
+        const c=itemId==='sparkle_fedora'?0xd946ef:0x242936, mat=metal(c,.22), band=metal(itemId==='sparkle_fedora'?0x7e22ce:0x0b0d12,.18);
+        const brim=new THREE.Mesh(new THREE.CylinderGeometry(.78,.82,.10,32),mat); brim.scale.z=.82; brim.position.y=.59; g.add(brim);
+        const crown=new THREE.Mesh(new THREE.CylinderGeometry(.43,.49,.34,24),mat); crown.scale.z=.86; crown.position.y=.78; g.add(crown);
+        const b=new THREE.Mesh(new THREE.TorusGeometry(.45,.035,8,24),band); b.scale.z=.86; b.position.y=.68; g.add(b);
+        if(itemId==='sparkle_fedora') for(let i=0;i<18;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(.025,6,6),basic(0xffffff)); const a=Math.random()*Math.PI*2; s.position.set(Math.cos(a)*(.35+Math.random()*.1),.68+Math.random()*.23,Math.sin(a)*(.3+Math.random()*.1)); g.add(s)}
+        hatMeshGroup.add(g);
+
+      } else if (itemId === 'classic_fedora') {
+        // kept above with sparkle variant; branch intentionally unreachable
+
+      } else if (itemId === 'valkyrie_helm') {
+        const g=new THREE.Group(), gold=metal(0xd4a72c,.18), dark=metal(0x3b2410,.3);
+        const helm=new THREE.Mesh(new THREE.SphereGeometry(.62,24,16),gold); helm.scale.set(1,.58,.88); helm.position.y=.57; g.add(helm);
+        const brow=new THREE.Mesh(new THREE.BoxGeometry(.9,.12,.12),dark); brow.position.set(0,.76,.48); g.add(brow);
+        [-1,1].forEach(s=>{
+          const wing=new THREE.Mesh(new THREE.ConeGeometry(.20,.72,5),gold); wing.scale.z=.35; wing.position.set(s*.62,.72,0); wing.rotation.z=s*.9; wing.rotation.x=Math.PI/2; g.add(wing);
+          const feather=new THREE.Mesh(new THREE.ConeGeometry(.13,.48,5),gold); feather.scale.z=.3; feather.position.set(s*.78,.82,-.03); feather.rotation.z=s*1.05; feather.rotation.x=Math.PI/2; g.add(feather);
+        });
+        hatMeshGroup.add(g);
+
+      } else if (itemId === 'cyber_visor') {
+        const g=new THREE.Group(), frame=metal(0x202735,.2), lens=basic(0x22d3ee);
+        const band=new THREE.Mesh(new THREE.BoxGeometry(1.0,.12,.10),frame); band.position.set(0,.48,.55); g.add(band);
+        const glass=new THREE.Mesh(new THREE.BoxGeometry(.82,.24,.07),new THREE.MeshStandardMaterial({color:0x22d3ee,emissive:0x0891b2,emissiveIntensity:.8,transparent:true,opacity:.82,metalness:.3,roughness:.1})); glass.position.set(0,.43,.60); g.add(glass);
+        [-.46,.46].forEach(x=>{const side=new THREE.Mesh(new THREE.BoxGeometry(.12,.30,.16),frame); side.position.set(x,.46,.53); g.add(side)});
+        hatMeshGroup.add(g);
+
+      } else if (itemId === 'demon_wings' || itemId === 'angel_wings') {
+        const g=new THREE.Group(), c=itemId==='demon_wings'?0x58111a:0xf5f5f5, mat=soft(c,.55);
+        [-1,1].forEach(s=>{for(let i=0;i<5;i++){const w=new THREE.Mesh(new THREE.ConeGeometry(.22,.82-i*.08,5),mat); w.scale.z=.30; w.position.set(s*(.46+i*.09),.15-i*.035,-.15-i*.12); w.rotation.z=s*(.65+i*.06); w.rotation.x=Math.PI/2; g.add(w)}});
+        g.position.y=-.02; hatMeshGroup.add(g);
+
+      } else if (itemId === 'gold_chain') {
+        const g=new THREE.Group(), m=metal(0xf5c542,.16);
+        for(let i=0;i<14;i++){const link=new THREE.Mesh(new THREE.TorusGeometry(.09,.025,8,16),m); const a=Math.PI+(i/13)*Math.PI; link.position.set(Math.cos(a)*.46,-.12+Math.sin(a)*.22,.48); link.rotation.x=Math.PI/2; link.rotation.z=i%2?Math.PI/2:0; g.add(link)}
+        hatMeshGroup.add(g);
+
+      } else {
+        // Never silently substitute a cone for a named accessory.
+        const placeholder=new THREE.Mesh(new THREE.SphereGeometry(.12,12,8),basic(0x64748b)); placeholder.position.y=.65; hatMeshGroup.add(placeholder);
+      }
+    }
+
+    function equipClothing(type, itemId) {
+      const cloth = clothingCatalog.find(c => c.id === itemId);
+      if (!cloth) return;
+
+      if (type === 'shirt') {
+        state.equippedShirt = itemId;
+        torsoMesh.material.color.set(cloth.color);
+      } else if (type === 'pants') {
+        state.equippedPants = itemId;
+        characterGroup.children.forEach(child => {
+          if (child.geometry && child.geometry.type === 'BoxGeometry' && child.position.y < 0) {
+            child.material.color.set(cloth.color);
+          }
+        });
+      }
+      updateUI();
+    }
+
+    function renderShop() {
+      const grid = document.getElementById('shop-items-grid');
+      grid.innerHTML = '';
+
+      catalog.forEach(item => {
+        const isOwned = state.ownedItems.includes(item.id);
+        const card = document.createElement('div');
+        card.className = 'glass-card p-4 rounded-2xl flex flex-col justify-between glass-card-hover border border-slate-800';
+        card.innerHTML = `
+          <div>
+            <div class="text-3xl mb-2">${item.icon}</div>
+            <h4 class="font-bold text-slate-100 text-sm">${item.name}</h4>
+            <p class="text-[11px] text-slate-400 mt-1">${item.desc}</p>
+          </div>
+          <div class="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3">
+            <span class="text-xs font-extrabold text-yellow-400">£${item.price.toLocaleString()}</span>
+            ${isOwned 
+              ? `<span class="text-[10px] uppercase font-bold text-slate-500 bg-slate-800/60 px-2 py-1 rounded-lg">Owned</span>`
+              : `<button onclick="buyItem('${item.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20">Buy</button>`
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderClothesShop() {
+      const grid = document.getElementById('clothes-items-grid');
+      grid.innerHTML = '';
+
+      clothingCatalog.forEach(item => {
+        const isOwned = state.ownedClothes.includes(item.id);
+        const card = document.createElement('div');
+        card.className = 'glass-card p-4 rounded-2xl flex flex-col justify-between glass-card-hover border border-slate-800';
+        card.innerHTML = `
+          <div>
+            <div class="text-3xl mb-2">${item.icon}</div>
+            <h4 class="font-bold text-slate-100 text-sm">${item.name}</h4>
+            <span class="text-[10px] text-red-400 uppercase font-bold">${item.type}</span>
+          </div>
+          <div class="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-3">
+            <span class="text-xs font-extrabold text-yellow-400">£${item.price.toLocaleString()}</span>
+            ${isOwned 
+              ? `<span class="text-[10px] uppercase font-bold text-slate-500 bg-slate-800/60 px-2 py-1 rounded-lg">Owned</span>`
+              : `<button onclick="buyClothing('${item.id}')" class="px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-red-700/20">Buy</button>`
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function buyItem(itemId) {
+      const item = catalog.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (state.cash < item.price) {
+        playSFX('lose');
+        alert("Insufficient balance to purchase this item!");
+        return;
+      }
+
+      state.cash -= item.price;
+      state.ownedItems.push(itemId);
+      playSFX('win');
+      equip3DAccessory(itemId);
+      updateUI();
+    }
+
+    function buyClothing(itemId) {
+      const item = clothingCatalog.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (state.cash < item.price) {
+        playSFX('lose');
+        alert("Insufficient balance to purchase this clothing item!");
+        return;
+      }
+
+      state.cash -= item.price;
+      state.ownedClothes.push(itemId);
+      playSFX('win');
+      equipClothing(item.type, itemId);
+      updateUI();
+    }
+
+    function renderCloset() {
+      const grid = document.getElementById('closet-items-grid');
+      grid.innerHTML = '';
+
+      if (state.ownedItems.length === 0 && state.ownedClothes.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-8 text-xs text-slate-500 font-bold">Your inventory is empty. Redeem promo codes or purchase catalog items!</div>`;
+        return;
+      }
+
+      // Render Accessories
+      state.ownedItems.forEach(itemId => {
+        let item = catalog.find(i => i.id === itemId);
+        if (itemId === 'domino_crown') item = freeExclusiveDomino;
+        if (!item) return;
+
+        const isEquipped = state.equippedHat === itemId;
+        const card = document.createElement('div');
+        card.className = `glass-card p-4 rounded-2xl flex flex-col justify-between border ${isEquipped ? 'border-red-600 bg-red-600/10' : 'border-slate-800'}`;
+        card.innerHTML = `
+          <div>
+            <div class="text-3xl mb-2">${item.icon}</div>
+            <h4 class="font-bold text-slate-100 text-sm">${item.name}</h4>
+          </div>
+          <div class="mt-4 border-t border-slate-800 pt-3 flex justify-end">
+            ${isEquipped 
+              ? `<button onclick="equip3DAccessory(null)" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Unequip</button>`
+              : `<button onclick="equip3DAccessory('${item.id}')" class="px-3 py-1.5 bg-pink-600 text-white text-xs font-bold rounded-xl">Equip</button>`
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Render Clothes
+      state.ownedClothes.forEach(itemId => {
+        const item = clothingCatalog.find(i => i.id === itemId);
+        if (!item) return;
+
+        const isEquipped = (item.type === 'shirt' && state.equippedShirt === itemId) || (item.type === 'pants' && state.equippedPants === itemId);
+        const card = document.createElement('div');
+        card.className = `glass-card p-4 rounded-2xl flex flex-col justify-between border ${isEquipped ? 'border-red-600 bg-red-600/10' : 'border-slate-800'}`;
+        card.innerHTML = `
+          <div>
+            <div class="text-3xl mb-2">${item.icon}</div>
+            <h4 class="font-bold text-slate-100 text-sm">${item.name}</h4>
+            <span class="text-[10px] text-red-400 font-bold uppercase">${item.type}</span>
+          </div>
+          <div class="mt-4 border-t border-slate-800 pt-3 flex justify-end">
+            <button onclick="equipClothing('${item.type}', '${item.id}')" class="px-3 py-1.5 bg-red-700 text-white text-xs font-bold rounded-xl">Equip</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function claimEmergencyFunds() {
+      if (state.cash >= 10) {
+        alert("Emergency funds are available when balance drops below £10!");
+        return;
+      }
+      state.cash += 500;
+      playSFX('coin');
+      updateUI();
+    }
+
+    function openRedeemModal() {
+      playSFX('click');
+      document.getElementById('modal-redeem').classList.remove('hidden');
+      document.getElementById('redeem-input').value = '';
+      document.getElementById('redeem-msg').classList.add('hidden');
+    }
+
+    function closeRedeemModal() {
+      document.getElementById('modal-redeem').classList.add('hidden');
+    }
+
+    function submitRedeemCode() {
+      const code = document.getElementById('redeem-input').value.trim().toUpperCase();
+      const msg = document.getElementById('redeem-msg');
+      msg.classList.remove('hidden');
+
+      if (!code) return;
+
+      if (state.redeemedCodes.includes(code)) {
+        msg.className = 'text-xs text-center font-bold text-amber-400';
+        msg.innerText = "Code already redeemed!";
+        playSFX('lose');
+        return;
+      }
+
+      if (code === 'FREE') {
+        state.cash += 1000;
+        if (!state.ownedItems.includes('domino_crown')) {
+          state.ownedItems.push('domino_crown');
+        }
+        state.redeemedCodes.push(code);
+        equip3DAccessory('domino_crown');
+        playSFX('win');
+        triggerConfetti();
+        msg.className = 'text-xs text-center font-bold text-emerald-400';
+        msg.innerText = "SUCCESS! +£1,000 Cash & EXCLUSIVE Domino Crown Unlocked!";
+        updateUI();
+      } else if (code === 'D3V') {
+        state.devUnlocked = true;
+        state.redeemedCodes.push(code);
+        document.getElementById('dev-menu-btn').classList.remove('hidden');
+        playSFX('win');
+        triggerConfetti();
+        msg.className = 'text-xs text-center font-bold text-red-400';
+        msg.innerText = "DEVELOPER MENU UNLOCKED!";
+      } else {
+        playSFX('lose');
+        msg.className = 'text-xs text-center font-bold text-rose-500';
+        msg.innerText = "Invalid Code!";
+      }
+    }
+
+    function openDevModal() {
+      playSFX('click');
+      document.getElementById('modal-dev').classList.remove('hidden');
+    }
+
+    function closeDevModal() {
+      document.getElementById('modal-dev').classList.add('hidden');
+    }
+
+    function setDevCash() {
+      const val = parseInt(document.getElementById('dev-cash-input').value);
+      if (!isNaN(val) && val >= 0) {
+        state.cash = val;
+        playSFX('coin');
+        updateUI();
+        alert(`Balance set to £${val.toLocaleString()}`);
+      }
+    }
+
+    function toggleDevOption(game) {
+      const chk = document.getElementById(`dev-rig-${game}`).checked;
+      state.devRig[game] = chk;
+      playSFX('click');
+      if (game === 'mines' && document.getElementById('game-panel-mines').classList.contains('hidden') === false) {
+        renderMinesGrid();
+      }
+    }
+
+    function selectGame(gameId) {
+      playSFX('click');
+      document.querySelectorAll('.game-select-btn').forEach(btn => {
+        btn.classList.remove('border-red-600/80', 'bg-red-600/10');
+        btn.classList.add('border-transparent');
+      });
+
+      document.getElementById(`game-btn-${gameId}`).classList.add('border-red-600/80', 'bg-red-600/10');
+      document.getElementById(`game-btn-${gameId}`).classList.remove('border-transparent');
+
+      document.querySelectorAll('#game-stage > div').forEach(panel => panel.classList.add('hidden'));
+      document.getElementById(`game-panel-${gameId}`).classList.remove('hidden');
+
+      if (gameId === 'mines') renderMinesGrid();
+    }
+
+    // 1. COINFLIP
+    function playCoinflip(choice) {
+      const wager = getBetAmount();
+      if (wager > state.cash) return;
+
+      state.cash -= wager;
+      updateUI();
+      playSFX('coin');
+
+      const coinEl = document.getElementById('coin');
+      coinEl.style.transform = 'rotateY(1080deg)';
+
+      setTimeout(() => {
+        let win = Math.random() < 0.5;
+        const result = win ? choice : (choice === 'heads' ? 'tails' : 'heads');
+        document.getElementById('coin-face').innerText = result.toUpperCase();
+
+        if (win) {
+          state.cash += wager * 2;
+          playSFX('win');
+          triggerConfetti();
+        } else {
+          playSFX('lose');
+        }
+
+        coinEl.style.transform = 'rotateY(0deg)';
+        updateUI();
+      }, 700);
+    }
+
+    // 2. SLOTS
+    function spinSlots() {
+      const wager = getBetAmount();
+      if (wager > state.cash) return;
+
+      state.cash -= wager;
+      updateUI();
+      playSFX('coin');
+
+      const symbols = ['💎', '7️⃣', '🎰', '🍒', '🔔', '🍋'];
+      let s1, s2, s3;
+
+      if (state.devRig.slots) {
+        s1 = '💎'; s2 = '💎'; s3 = '💎';
+      } else {
+        s1 = symbols[Math.floor(Math.random() * symbols.length)];
+        s2 = symbols[Math.floor(Math.random() * symbols.length)];
+        s3 = symbols[Math.floor(Math.random() * symbols.length)];
+      }
+
+      document.getElementById('slot-1').innerText = s1;
+      document.getElementById('slot-2').innerText = s2;
+      document.getElementById('slot-3').innerText = s3;
+
+      if (s1 === s2 && s2 === s3) {
+        state.cash += wager * 10;
+        playSFX('win');
+        triggerConfetti();
+      } else if (s1 === s2 || s2 === s3 || s1 === s3) {
+        state.cash += wager * 2;
+        playSFX('win');
+      } else {
+        playSFX('lose');
+      }
+      updateUI();
+    }
+
+    // 3. ROULETTE
+    function playRoulette(betType) {
+      const wager = getBetAmount();
+      if (wager > state.cash) return;
+
+      state.cash -= wager;
+      updateUI();
+      playSFX('coin');
+
+      let num = state.devRig.roulette ? 0 : Math.floor(Math.random() * 37);
+      const wheel = document.getElementById('roulette-wheel');
+      wheel.innerText = num;
+
+      let color = 'green';
+      if (num !== 0) color = (num % 2 === 0) ? 'black' : 'red';
+
+      if (color === 'red') wheel.className = 'w-full h-full rounded-full border-4 border-red-500 flex items-center justify-center text-3xl font-black text-red-400';
+      else if (color === 'black') wheel.className = 'w-full h-full rounded-full border-4 border-slate-600 flex items-center justify-center text-3xl font-black text-slate-200';
+      else wheel.className = 'w-full h-full rounded-full border-4 border-emerald-500 flex items-center justify-center text-3xl font-black text-emerald-400';
+
+      if (betType === color) {
+        const mult = (betType === 'green') ? 14 : 2;
+        state.cash += wager * mult;
+        playSFX('win');
+        triggerConfetti();
+      } else {
+        playSFX('lose');
+      }
+      updateUI();
+    }
+
+    // 4. BLACKJACK
+    let bjPlayerHand = [], bjDealerHand = [], bjActive = false;
+
+    function getCardValue(card) {
+      if (['K', 'Q', 'J'].includes(card)) return 10;
+      if (card === 'A') return 11;
+      return parseInt(card);
+    }
+
+    function calculateHand(hand) {
+      let total = 0, aces = 0;
+      hand.forEach(c => {
+        let val = getCardValue(c);
+        if (c === 'A') aces++;
+        total += val;
+      });
+      while (total > 21 && aces > 0) {
+        total -= 10;
+        aces--;
+      }
+      return total;
+    }
+
+    function startBlackjack() {
+      const wager = getBetAmount();
+      if (wager > state.cash) return;
+
+      state.cash -= wager;
+      updateUI();
+      playSFX('coin');
+
+      const deck = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+      
+      if (state.devRig.blackjack) {
+        bjPlayerHand = ['10', 'A'];
+        bjDealerHand = ['7', '8'];
+      } else {
+        bjPlayerHand = [deck[Math.floor(Math.random()*deck.length)], deck[Math.floor(Math.random()*deck.length)]];
+        bjDealerHand = [deck[Math.floor(Math.random()*deck.length)], deck[Math.floor(Math.random()*deck.length)]];
+      }
+
+      bjActive = true;
+      document.getElementById('bj-deal-btn').disabled = true;
+      document.getElementById('bj-hit-btn').disabled = false;
+      document.getElementById('bj-stand-btn').disabled = false;
+
+      renderBJ();
+      if (calculateHand(bjPlayerHand) === 21) blackjackStand();
+    }
+
+    function renderBJ() {
+      const pCards = document.getElementById('player-cards');
+      const dCards = document.getElementById('dealer-cards');
+
+      pCards.innerHTML = bjPlayerHand.map(c => `<div class="w-12 h-16 bg-slate-900 border border-amber-500/50 rounded-xl flex items-center justify-center text-lg font-black text-amber-400 shadow-md">${c}</div>`).join('');
+      dCards.innerHTML = bjDealerHand.map((c, idx) => {
+        if (idx === 1 && bjActive) return `<div class="w-12 h-16 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-lg font-black text-slate-500">?</div>`;
+        return `<div class="w-12 h-16 bg-slate-900 border border-amber-500/50 rounded-xl flex items-center justify-center text-lg font-black text-amber-400 shadow-md">${c}</div>`;
+      }).join('');
+
+      document.getElementById('player-score').innerText = calculateHand(bjPlayerHand);
+      document.getElementById('dealer-score').innerText = bjActive ? getCardValue(bjDealerHand[0]) : calculateHand(bjDealerHand);
+    }
+
+    function blackjackHit() {
+      if (!bjActive) return;
+      const deck = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+      bjPlayerHand.push(deck[Math.floor(Math.random()*deck.length)]);
+      renderBJ();
+
+      if (calculateHand(bjPlayerHand) > 21) endBJ(false);
+    }
+
+    function blackjackStand() {
+      if (!bjActive) return;
+      bjActive = false;
+
+      const deck = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+      while (calculateHand(bjDealerHand) < 17) {
+        bjDealerHand.push(deck[Math.floor(Math.random()*deck.length)]);
+      }
+
+      renderBJ();
+      const pTotal = calculateHand(bjPlayerHand);
+      const dTotal = calculateHand(bjDealerHand);
+
+      if (dTotal > 21 || pTotal > dTotal) endBJ(true);
+      else endBJ(false);
+    }
+
+    function endBJ(win) {
+      bjActive = false;
+      document.getElementById('bj-deal-btn').disabled = false;
+      document.getElementById('bj-hit-btn').disabled = true;
+      document.getElementById('bj-stand-btn').disabled = true;
+
+      const wager = getBetAmount();
+      if (win) {
+        state.cash += wager * 2;
+        playSFX('win');
+        triggerConfetti();
+      } else {
+        playSFX('lose');
+      }
+      updateUI();
+    }
+
+    // 5. MINES
+    let minesGrid = [], minesActive = false, minesWager = 0, minesRevealed = 0;
+
+    function renderMinesGrid() {
+      const container = document.getElementById('mines-grid');
+      container.innerHTML = '';
+
+      for (let i = 0; i < 25; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'w-full h-full bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-sm font-black transition hover:border-red-600/50';
+        
+        if (state.devRig.mines && minesActive && minesGrid[i] === 'MINE') {
+          btn.innerHTML = '💣';
+          btn.classList.add('bg-rose-950/40', 'border-rose-500/50');
+        }
+
+        btn.onclick = () => clickMineTile(i, btn);
+        container.appendChild(btn);
+      }
+    }
+
+    function startMines() {
+      minesWager = getBetAmount();
+      if (minesWager > state.cash) return;
+
+      state.cash -= minesWager;
+      updateUI();
+      playSFX('coin');
+
+      minesActive = true;
+      minesRevealed = 0;
+      minesGrid = Array(25).fill('GEM');
+      let minesPlaced = 0;
+      while (minesPlaced < 3) {
+        let idx = Math.floor(Math.random() * 25);
+        if (minesGrid[idx] !== 'MINE') {
+          minesGrid[idx] = 'MINE';
+          minesPlaced++;
+        }
+      }
+
+      document.getElementById('mines-start-btn').disabled = true;
+      document.getElementById('mines-claim-btn').disabled = false;
+      document.getElementById('mines-mult').innerText = '1.00x';
+      document.getElementById('mines-cashout-val').innerText = '£' + minesWager;
+
+      renderMinesGrid();
+    }
+
+    function clickMineTile(idx, btn) {
+      if (!minesActive || btn.disabled) return;
+
+      if (minesGrid[idx] === 'MINE') {
+        btn.innerHTML = '💥';
+        btn.classList.add('bg-rose-600', 'text-white');
+        playSFX('lose');
+        minesActive = false;
+        document.getElementById('mines-start-btn').disabled = false;
+        document.getElementById('mines-claim-btn').disabled = true;
+      } else {
+        btn.innerHTML = '💎';
+        btn.classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-400');
+        btn.disabled = true;
+        minesRevealed++;
+        playSFX('win');
+
+        const mult = (1 + minesRevealed * 0.25).toFixed(2);
+        const cashout = Math.floor(minesWager * mult);
+
+        document.getElementById('mines-mult').innerText = mult + 'x';
+        document.getElementById('mines-cashout-val').innerText = '£' + cashout;
+      }
+    }
+
+    function cashoutMines() {
+      if (!minesActive) return;
+      const mult = (1 + minesRevealed * 0.25);
+      const winVal = Math.floor(minesWager * mult);
+
+      state.cash += winVal;
+      minesActive = false;
+      playSFX('win');
+      triggerConfetti();
+
+      document.getElementById('mines-start-btn').disabled = false;
+      document.getElementById('mines-claim-btn').disabled = true;
+
+      updateUI();
+    }
+
+    // Modern arcade games
+    function playDice() { const wager=getBetAmount(); if(wager>state.cash)return; state.cash-=wager; const p=1+Math.floor(Math.random()*6), h=1+Math.floor(Math.random()*6), faces=['⚀','⚁','⚂','⚃','⚄','⚅']; document.getElementById('dice-player').innerText=faces[p-1]; document.getElementById('dice-house').innerText=faces[h-1]; const r=document.getElementById('dice-result'); if(p>h){state.cash+=wager*2;r.innerText=`You rolled ${p}; house rolled ${h}. You win!`;playSFX('win');triggerConfetti();}else if(p===h){state.cash+=wager;r.innerText=`Tie at ${p}. Your wager is refunded.`;playSFX('coin');}else{r.innerText=`You rolled ${p}; house rolled ${h}. House wins.`;playSFX('lose');}updateUI(); }
+    let crashActive=false,crashWager=0,crashMult=1,crashPoint=0,crashTimer=null;
+    function startCrash(){if(crashActive)return;crashWager=getBetAmount();if(crashWager>state.cash)return;state.cash-=crashWager;crashActive=true;crashMult=1;crashPoint=1.15+Math.random()*Math.random()*8;document.getElementById('crash-start-btn').disabled=true;document.getElementById('crash-cashout-btn').disabled=false;document.getElementById('crash-status').innerText='Multiplier climbing… cash out before it crashes.';crashTimer=setInterval(()=>{crashMult=+(crashMult+0.04+crashMult*0.012).toFixed(2);document.getElementById('crash-mult').innerText=crashMult.toFixed(2)+'x';if(crashMult>=crashPoint){clearInterval(crashTimer);crashActive=false;document.getElementById('crash-status').innerText=`CRASHED at ${crashMult.toFixed(2)}x — wager lost.`;document.getElementById('crash-cashout-btn').disabled=true;document.getElementById('crash-start-btn').disabled=false;playSFX('lose');updateUI();}},100);updateUI();}
+    function cashoutCrash(){if(!crashActive)return;clearInterval(crashTimer);crashActive=false;const winVal=Math.floor(crashWager*crashMult);state.cash+=winVal;document.getElementById('crash-status').innerText=`Cashed out at ${crashMult.toFixed(2)}x for £${winVal.toLocaleString()}.`;document.getElementById('crash-cashout-btn').disabled=true;document.getElementById('crash-start-btn').disabled=false;playSFX('win');triggerConfetti();updateUI();}
+    let hiloCurrent=7,hiloMult=1;
+    function startHiLo(){hiloCurrent=1+Math.floor(Math.random()*13);hiloMult=1;document.getElementById('hilo-card').innerText=hiloCurrent;document.getElementById('hilo-mult').innerText='1.00x';}
+    function playHiLo(choice){const wager=getBetAmount();if(wager>state.cash)return;const next=1+Math.floor(Math.random()*13);state.cash-=wager;const tie=next===hiloCurrent,correct=choice==='higher'?next>hiloCurrent:next<hiloCurrent;document.getElementById('hilo-card').innerText=next;if(tie){state.cash+=wager;playSFX('coin');}else if(correct){hiloMult=+(hiloMult+0.35).toFixed(2);state.cash+=Math.floor(wager*hiloMult);document.getElementById('hilo-mult').innerText=hiloMult.toFixed(2)+'x';playSFX('win');triggerConfetti();}else{hiloMult=1;document.getElementById('hilo-mult').innerText='1.00x';playSFX('lose');}hiloCurrent=next;updateUI();}
+    function playPlinko(){const wager=getBetAmount();if(wager>state.cash)return;state.cash-=wager;const mult=[0.5,1,2,5,2,1,0.5][Math.floor(Math.random()*7)],chip=document.getElementById('plinko-chip');chip.classList.remove('hidden');chip.style.left=`${8+Math.random()*84}%`;chip.animate([{transform:'translate(-50%,0)'},{transform:'translate(-50%,180px)'}],{duration:650,easing:'cubic-bezier(.2,.8,.3,1)'});setTimeout(()=>{state.cash+=Math.floor(wager*mult);document.getElementById('plinko-result').innerText=`Landed on ${mult}x — payout £${Math.floor(wager*mult).toLocaleString()}.`;playSFX(mult>=2?'win':'coin');if(mult>=5)triggerConfetti();updateUI();},650);}
+    function playBaccarat(betType){const wager=getBetAmount();if(wager>state.cash)return;state.cash-=wager;const p=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10,b=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10;document.getElementById('baccarat-player').innerText=p;document.getElementById('baccarat-banker').innerText=b;const result=p===b?'tie':p>b?'player':'banker';if(betType===result){state.cash+=wager*(result==='tie'?8:2);playSFX('win');triggerConfetti();}else playSFX('lose');updateUI();}
+    function spinPrizeWheel(){const wager=getBetAmount();if(wager>state.cash)return;state.cash-=wager;const mult=[0,0.5,1,1.5,2,3,5,10][Math.floor(Math.random()*8)],wheel=document.getElementById('prize-wheel');wheel.animate([{transform:'rotate(0deg)'},{transform:`rotate(${720+Math.random()*720}deg)`}],{duration:900,easing:'cubic-bezier(.15,.75,.2,1)'});setTimeout(()=>{state.cash+=Math.floor(wager*mult);document.getElementById('wheel-result').innerText=`${mult}x landed — payout £${Math.floor(wager*mult).toLocaleString()}.`;if(mult>=2){playSFX('win');triggerConfetti();}else playSFX('lose');updateUI();},900);}
+
+    // Initialize application on window load
+    window.onload = function() {
+      init3DAvatar();
+      updateUI();
+    };
+  </script>
+
+</body>
+</html>
